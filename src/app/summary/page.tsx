@@ -148,7 +148,7 @@ export default function SummaryPage() {
                 >
                   <td className="px-4 py-2.5 text-gray-900">{item.tenant}</td>
                   <td className="px-4 py-2.5 text-right font-mono text-gray-900">
-                    {parseAmount(item.amount).toLocaleString()}
+                    Rp {parseAmount(item.amount).toLocaleString("id-ID")}
                   </td>
                 </tr>
               ))}
@@ -157,7 +157,7 @@ export default function SummaryPage() {
               <tr className="bg-gray-50 border-t-2 border-gray-200 font-semibold">
                 <td className="px-4 py-2.5 text-gray-900">Total</td>
                 <td className="px-4 py-2.5 text-right font-mono text-gray-900">
-                  {total.toLocaleString()}
+                  Rp {total.toLocaleString("id-ID")}
                 </td>
               </tr>
             </tfoot>
