@@ -16,7 +16,7 @@ npm run lint     # ESLint
 
 ## Architecture
 
-**Stack**: Next.js 16 (App Router), TypeScript, Tailwind CSS, Tesseract.js v5, Resend
+**Stack**: Next.js 16 (App Router), TypeScript, Tailwind CSS, Tesseract.js v5, Nodemailer (Gmail SMTP)
 
 **Page flow** (3 steps, state via sessionStorage `molov_state` key):
 
@@ -26,28 +26,29 @@ npm run lint     # ESLint
 | 2 | `/review` | Edit/delete extracted items, add items manually |
 | 3 | `/summary` | Review totals, submit → sends email via `/api/send-email` |
 
-**OCR** (`src/lib/ocr.ts`): Client-side. Uses Tesseract.js v5 `createWorker("eng", 1, { logger })`. Parser tries multiple regex strategies: colon/dash-separated, whitespace-separated, amount-first, amount-last. Falls back to any line containing a number.
+**OCR** (`src/lib/ocr.ts`): Client-side Tesseract.js v5. Finds `Rp` in each line, splits to extract name + amount. Has `fixOcrAmount()` for common OCR errors (%→9, o→0, l→1). Multi-line fallback: standalone name lines pair with next Rp line.
 
-**Amount parsing** (`parseAmount`): Handles Indonesian format (`1.000,00`) and US format (`1,000.00`).
+**Amount parsing** (`parseAmount`): Handles Indonesian thousands format (dots: 1.286.056) and European decimal (commas: 1.000,00). Treats 3-digit tail after dot as thousands separator.
 
-**Email** (`src/app/api/send-email/route.ts`): POST endpoint. Uses Resend SDK. Reads recipients from `TO_EMAIL`/`CC_EMAIL` env vars, falling back to `recipient.txt`/`cc.txt` files.
+**Email** (`src/app/api/send-email/route.ts`): POST endpoint using nodemailer with Gmail SMTP. Reads recipients from `TO_EMAIL`/`CC_EMAIL` env vars, falling back to `recipient.txt`/`cc.txt`.
 
-**Session storage** (`src/lib/store.ts`): `saveState()`, `loadState()`, `clearState()` wrapping `sessionStorage`.
+**Session storage** (`src/lib/store.ts`): `saveState()`, `loadState()`, `clearState()`. Also stores `rawText` for debug.
 
 ## Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `RESEND_API_KEY` | Yes | Resend API key for email sending |
+| `SMTP_USER` | Yes | Gmail address (e.g., aditisstillalive@gmail.com) |
+| `SMTP_PASS` | Yes | Gmail App Password (16 chars, no spaces) |
+| `SMTP_HOST` | No | SMTP server (default: smtp.gmail.com) |
+| `SMTP_PORT` | No | SMTP port (default: 587) |
 | `TO_EMAIL` | No | Primary recipient (falls back to `recipient.txt`) |
 | `CC_EMAIL` | No | CC recipient (falls back to `cc.txt`) |
-| `FROM_EMAIL` | No | Sender address (defaults to `onboarding@resend.dev`) |
 
 Copy `.env.local.example` to `.env.local` and fill in values.
 
 ## Vercel Deployment
 
-- Set `RESEND_API_KEY` in Vercel environment variables
-- `recipient.txt` and `cc.txt` are read from deployed filesystem (works on Vercel serverless)
-- For custom sender domain: verify domain in Resend and set `FROM_EMAIL`
-- Resend free tier: `onboarding@resend.dev` only sends to the Resend account owner's email
+- Set `SMTP_USER` and `SMTP_PASS` in Vercel environment variables
+- Gmail requires App Password (not regular password): enable 2FA → https://myaccount.google.com/apppasswords
+- `recipient.txt` and `cc.txt` are read from deployed filesystem

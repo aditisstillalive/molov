@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 import fs from "fs";
 import path from "path";
 
 function readEmails(filename: string): string[] {
   try {
-    const filePath = path.join(/* turbopackIgnore: true */ process.cwd(), filename);
+    const filePath = path.join(
+      /* turbopackIgnore: true */ process.cwd(),
+      filename
+    );
     const content = fs.readFileSync(filePath, "utf-8");
     return content
       .split("\n")
@@ -20,49 +23,51 @@ export async function POST(request: Request) {
   try {
     const { items, imageName, total } = await request.json();
 
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) {
+    const smtpUser = process.env.SMTP_USER;
+    const smtpPass = process.env.SMTP_PASS;
+
+    if (!smtpUser || !smtpPass) {
       return NextResponse.json(
-        { error: "RESEND_API_KEY not configured" },
+        { error: "SMTP_USER or SMTP_PASS not configured" },
         { status: 500 }
       );
     }
 
-    const resend = new Resend(apiKey);
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || "smtp.gmail.com",
+      port: Number(process.env.SMTP_PORT) || 587,
+      secure: false,
+      auth: { user: smtpUser, pass: smtpPass },
+    });
 
-    // Recipients: env vars first, then fall back to file-based config
+    // Recipients
     const toEmail = process.env.TO_EMAIL;
     const ccEmail = process.env.CC_EMAIL;
+    const to = toEmail ? toEmail : readEmails("recipient.txt").join(", ");
+    const cc = ccEmail ? ccEmail : readEmails("cc.txt").join(", ");
 
-    const to = toEmail
-      ? [toEmail]
-      : readEmails("recipient.txt");
-    const cc = ccEmail
-      ? [ccEmail]
-      : readEmails("cc.txt");
-
-    if (to.length === 0) {
+    if (!to) {
       return NextResponse.json(
-        { error: "No recipients configured. Set TO_EMAIL or create recipient.txt" },
+        {
+          error:
+            "No recipients configured. Set TO_EMAIL or create recipient.txt",
+        },
         { status: 500 }
       );
     }
 
-    const fromEmail =
-      process.env.FROM_EMAIL || "Payment OCR <onboarding@resend.dev>";
-
-    // Build email body
+    // Build email
     const rows = items
       .map(
         (item: { tenant: string; amount: string }) =>
-          `${item.tenant}: ${item.amount}`
+          `${item.tenant}: Rp ${item.amount}`
       )
       .join("\n");
 
     const htmlRows = items
       .map(
         (item: { tenant: string; amount: string }) =>
-          `<tr><td style="padding:8px 12px;border-bottom:1px solid #eee">${item.tenant}</td><td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">${item.amount}</td></tr>`
+          `<tr><td style="padding:8px 12px;border-bottom:1px solid #eee">${item.tenant}</td><td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">Rp ${item.amount}</td></tr>`
       )
       .join("");
 
@@ -81,38 +86,29 @@ export async function POST(request: Request) {
           <tfoot>
             <tr style="background:#f9fafb;font-weight:bold">
               <td style="padding:8px 12px">Total</td>
-              <td style="padding:8px 12px;text-align:right;font-family:monospace">${total.toLocaleString()}</td>
+              <td style="padding:8px 12px;text-align:right;font-family:monospace">Rp ${total.toLocaleString("id-ID")}</td>
             </tr>
           </tfoot>
         </table>
       </div>
     `;
 
-    const text = `Payment Summary\n\nImage: ${imageName || "N/A"}\n\n${rows}\n\nTotal: ${total.toLocaleString()}`;
+    const text = `Payment Summary\n\nImage: ${imageName || "N/A"}\n\n${rows}\n\nTotal: Rp ${total.toLocaleString("id-ID")}`;
 
-    const { data, error } = await resend.emails.send({
-      from: fromEmail,
+    await transporter.sendMail({
+      from: smtpUser,
       to,
-      cc,
+      cc: cc || undefined,
       subject: `Payment Summary - ${imageName || "Upload"}`,
       text,
       html,
     });
 
-    if (error) {
-      console.error("Resend error:", error);
-      return NextResponse.json(
-        { error: "Failed to send email" },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({ success: true, id: data?.id });
+    return NextResponse.json({ success: true });
   } catch (err) {
     console.error("Send email error:", err);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    const message =
+      err instanceof Error ? err.message : "Internal server error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
