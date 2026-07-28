@@ -88,15 +88,17 @@ export default function ReviewPage() {
   }
 
   return (
-    <main className="flex-1 flex flex-col max-w-lg mx-auto w-full px-4 py-8">
+    <main className="flex-1 flex flex-col max-w-lg mx-auto w-full px-4 py-8 min-h-0">
       <Stepper current={1} />
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-8">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-8 flex flex-col min-h-0 flex-1">
+        <div className="flex items-center justify-between mb-4 shrink-0">
           <div>
             <h1 className="text-xl font-bold text-gray-900">Review Items</h1>
             {imageName && (
-              <p className="text-xs text-gray-400 mt-0.5">From: {imageName}</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                From: {imageName} · {items.length} items
+              </p>
             )}
           </div>
           <button
@@ -107,12 +109,12 @@ export default function ReviewPage() {
           </button>
         </div>
 
-        <p className="text-gray-500 text-sm mb-4">
+        <p className="text-gray-500 text-sm mb-4 shrink-0">
           Edit or delete items as needed.
         </p>
 
-        {/* Items */}
-        <div className="space-y-3 mb-4">
+        {/* Items — scrollable */}
+        <div className="space-y-3 mb-4 overflow-y-auto min-h-0">
           {items.map((item) => (
             <div
               key={item.id}
