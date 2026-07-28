@@ -3,8 +3,21 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { loadState, saveState } from "@/lib/store";
+import { parseAmount } from "@/lib/ocr";
 import type { PaymentItem } from "@/lib/types";
 import Stepper from "@/components/Stepper";
+
+/** Format raw amount string with Indonesian thousand separators on blur */
+function formatAmountInput(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  const num = parseAmount(trimmed);
+  if (num === 0 && !/^\d+$/.test(trimmed.replace(/[.,]/g, ""))) return raw;
+  if (num === Math.floor(num)) {
+    return num.toLocaleString("id-ID");
+  }
+  return raw; // has decimals, leave as-is
+}
 
 export default function ReviewPage() {
   const router = useRouter();
@@ -17,7 +30,12 @@ export default function ReviewPage() {
   useEffect(() => {
     const state = loadState();
     if (state) {
-      setItems(state.items);
+      // Format all amounts on load for consistent display
+      const formatted = state.items.map((item) => ({
+        ...item,
+        amount: formatAmountInput(item.amount),
+      }));
+      setItems(formatted);
       setImageName(state.imageName);
       if (state.rawText) setRawText(state.rawText);
     }
@@ -32,6 +50,16 @@ export default function ReviewPage() {
     setItems((prev) =>
       prev.map((item) =>
         item.id === id ? { ...item, [field]: value } : item
+      )
+    );
+  }
+
+  function handleAmountBlur(id: string) {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? { ...item, amount: formatAmountInput(item.amount) }
+          : item
       )
     );
   }
@@ -95,26 +123,22 @@ export default function ReviewPage() {
       <Stepper current={1} />
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-8 flex flex-col min-h-0 flex-1">
-        <div className="flex items-center justify-between mb-4 shrink-0">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Review Items</h1>
-            {imageName && (
-              <p className="text-xs text-gray-400 mt-0.5">
-                From: {imageName} · {items.length} items
-              </p>
-            )}
+        <div className="shrink-0">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">Review Items</h1>
+              {imageName && (
+                <p className="text-xs text-gray-400 mt-0.5">
+                  From: {imageName} · {items.length} items
+                </p>
+              )}
+            </div>
           </div>
-          <button
-            onClick={handleAdd}
-            className="px-3 py-1.5 rounded-lg text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-colors"
-          >
-            + Add
-          </button>
-        </div>
 
-        <p className="text-gray-500 text-sm mb-4 shrink-0">
-          Edit or delete items as needed.
-        </p>
+          <p className="text-gray-500 text-sm mb-4">
+            Edit or delete items as needed.
+          </p>
+        </div>
 
         {/* Raw OCR debug */}
         {rawText && (
@@ -155,8 +179,9 @@ export default function ReviewPage() {
                 onChange={(e) =>
                   handleChange(item.id, "amount", e.target.value)
                 }
+                onBlur={() => handleAmountBlur(item.id)}
                 placeholder="Amount"
-                className="w-28 px-3 py-2 bg-white border border-gray-300 rounded-md text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
+                className="w-32 px-3 py-2 bg-white border border-gray-300 rounded-md text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
               />
               <button
                 onClick={() => handleDelete(item.id)}
@@ -180,6 +205,14 @@ export default function ReviewPage() {
             </div>
           ))}
         </div>
+
+        {/* Add button — below items */}
+        <button
+          onClick={handleAdd}
+          className="shrink-0 w-full py-2 rounded-lg font-medium text-indigo-600 border border-indigo-300 hover:bg-indigo-50 transition-colors mb-4"
+        >
+          + Add Item
+        </button>
       </div>
 
       {/* Navigation */}
