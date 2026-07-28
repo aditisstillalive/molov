@@ -1,13 +1,14 @@
 import { PaymentItem } from "./types";
 
 /**
- * Parse OCR raw text into tenant + amount pairs.
- * Handles common payment history formats:
- *   "Tenant Name  100000"   (whitespace-separated)
- *   "Tenant Name: 100000"   (colon-separated)
- *   "Tenant Name - 100000"  (dash-separated)
- *   "100000  Tenant Name"   (amount first)
- * Recognizes amounts with optional currency prefix (Rp, $, IDR) and thousands separators.
+ * Parse OCR raw text from payment history screenshot.
+ *
+ * Expected format (GoPay/Bibit mobile):
+ *   TENANT NAME -RpAMOUNT      ← keep (name + signed Rp amount)
+ *   DD Mon YYYY Category       ← skip (date/category line)
+ *   noise) DD Mon YYYY ...     ← skip (noise + date)
+ *
+ * Also handles generic formats as fallback.
  */
 export function parseOcrText(raw: string): PaymentItem[] {
   const lines = raw
@@ -17,66 +18,52 @@ export function parseOcrText(raw: string): PaymentItem[] {
 
   const items: PaymentItem[] = [];
 
+  // Month names for date detection
+  const months =
+    /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/i;
+
   for (const line of lines) {
-    // Skip lines that look like headers/dates/totals
-    if (
-      /^(total|jumlah|sum|subtotal|grand|page|date|tanggal|period|periode|no\.?|#)/i.test(
-        line
-      )
-    ) {
+    // Skip date lines: "28 Jul 2026 Outgoing", "DD Mon YYYY Category"
+    if (months.test(line) && /\d{4}/.test(line)) {
       continue;
     }
 
-    // Try: "Tenant Name : 100000" or "Tenant Name - 100000"
-    const colonDashMatch = line.match(
-      /^(.+?)\s*[:=\-–—]\s*(?:Rp\.?\s*|IDR\s*|\$\s*)?(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d+)?)\s*$/i
+    // Skip UI noise / garbled OCR
+    if (/^[^\w]*$/.test(line)) continue;
+    if (/^(Q\s|&|@@|===|©|®|™)/.test(line)) continue;
+    if (line.length < 5) continue;
+
+    // Primary match: "NAME [+-]RpAMOUNT" — the exact GoPay/Bibit format
+    const mainMatch = line.match(
+      /^(.+?)\s+([+-])\s*Rp\s*([\d.,]+)\s*$/i
     );
-    if (colonDashMatch) {
+    if (mainMatch) {
+      const name = mainMatch[1].trim();
+      const sign = mainMatch[2];
+      const amount = mainMatch[3];
+      // Skip if name looks like a date fragment
+      if (/^\d{1,2}\s/.test(name)) continue;
       items.push({
         id: crypto.randomUUID(),
-        tenant: colonDashMatch[1].trim(),
-        amount: colonDashMatch[2],
+        tenant: name,
+        amount: sign === "-" ? amount : amount, // keep both + and -
       });
       continue;
     }
 
-    // Try: amount at end of line (tenant name then amount)
-    const amountAtEnd = line.match(
-      /^(.+?)\s+(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d+)?)\s*$/
+    // Secondary: "NAME : RpAMOUNT" or "NAME - RpAMOUNT" (colon/dash separated)
+    const sepMatch = line.match(
+      /^(.+?)\s*[:=\-–—]\s*(?:Rp\.?\s*)?(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d+)?)\s*$/i
     );
-    if (amountAtEnd) {
+    if (sepMatch) {
+      const name = sepMatch[1].trim();
+      if (/^\d{1,2}\s/.test(name)) continue;
       items.push({
         id: crypto.randomUUID(),
-        tenant: amountAtEnd[1].trim(),
-        amount: amountAtEnd[2],
+        tenant: name,
+        amount: sepMatch[2],
       });
       continue;
-    }
-
-    // Try: amount at start of line (amount then tenant name)
-    const amountAtStart = line.match(
-      /^(?:Rp\.?\s*|IDR\s*|\$\s*)?(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d+)?)\s+(.+)$/i
-    );
-    if (amountAtStart) {
-      items.push({
-        id: crypto.randomUUID(),
-        tenant: amountAtStart[2].trim(),
-        amount: amountAtStart[1],
-      });
-      continue;
-    }
-
-    // Fallback: line has any number
-    const anyNumber = line.match(/(\d[\d.,]*)/);
-    if (anyNumber) {
-      const rest = line.replace(anyNumber[0], "").trim();
-      if (rest.length > 0) {
-        items.push({
-          id: crypto.randomUUID(),
-          tenant: rest,
-          amount: anyNumber[0],
-        });
-      }
     }
   }
 
@@ -88,7 +75,7 @@ export function parseOcrText(raw: string): PaymentItem[] {
  * Handles Indonesian/European format (1.000,00) and standard format (1,000.00).
  */
 export function parseAmount(raw: string): number {
-  let s = raw.replace(/[^\d.,]/g, "").trim();
+  let s = raw.replace(/[^\d.,-]/g, "").trim();
 
   const lastComma = s.lastIndexOf(",");
   const lastDot = s.lastIndexOf(".");
