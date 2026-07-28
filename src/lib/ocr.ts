@@ -15,11 +15,26 @@ function isDateLine(line: string): boolean {
 }
 
 /**
+ * Fix common OCR misreads in amount strings.
+ * "%" is commonly misread for "9" in OCR.
+ */
+function fixOcrAmount(raw: string): string {
+  return raw
+    .replace(/%/g, "9") // % → 9 (most common OCR error in digits)
+    .replace(/[oO]/g, "0") // o/O → 0
+    .replace(/[lI|]/g, "1") // l/I/| → 1
+    .replace(/[sS]/g, "5") // s/S → 5 (less common, safe in numeric context)
+    .replace(/[^-\d.,]/g, ""); // strip anything else non-numeric
+}
+
+/**
  * Parse OCR raw text into tenant + Rp amount pairs.
  *
- * Two-pass approach:
- * 1. Match lines where NAME and RpAMOUNT are on the SAME line
- * 2. For lines with Rp but no name, borrow name from previous non-date line
+ * Two-pass:
+ * 1. Lines with NAME and RpAMOUNT on same line → extract both
+ * 2. Standalone name lines → saved, paired with next Rp line that lacks a name
+ *
+ * Amount capture is permissive — grabs everything after Rp, then cleans OCR errors.
  */
 export function parseOcrText(raw: string): PaymentItem[] {
   const lines = raw
@@ -31,17 +46,15 @@ export function parseOcrText(raw: string): PaymentItem[] {
   let prevName: string | null = null;
 
   for (const line of lines) {
-    // Skip date lines and noise
     if (isDateLine(line)) continue;
     if (/^[^\w]*$/.test(line)) continue;
     if (line.length < 3) continue;
 
-    // Find Rp + digits anywhere in the line
-    const rpIdx = line.search(/[-+]?\s*Rp\.?\s*\d/i);
+    // Find "Rp" anywhere in the line
+    const rpIdx = line.search(/[-+]?\s*Rp\.?\s*/i);
 
     if (rpIdx === -1) {
-      // No Rp on this line — could be a standalone name (all caps or title case)
-      // Save it as potential name for next Rp line
+      // No Rp — could be standalone name for next line
       const cleaned = line.replace(/^[^\w\s]+/, "").trim();
       if (
         cleaned.length >= 3 &&
@@ -52,30 +65,30 @@ export function parseOcrText(raw: string): PaymentItem[] {
       continue;
     }
 
-    // Line has Rp — extract name (before Rp) and amount (after Rp)
+    // Line has Rp — extract name (before Rp) and raw amount (after Rp)
     const beforeRp = line.slice(0, rpIdx).trim();
     const afterRp = line.slice(rpIdx);
 
-    const amountMatch = afterRp.match(/[-+]?\s*Rp\.?\s*([\d.,]+)/i);
-    if (!amountMatch) continue;
+    // Permissive capture: grab everything after Rp, then clean
+    const rawAmount = afterRp.replace(/^[-+]?\s*Rp\.?\s*/i, "").trim();
+    const amount = fixOcrAmount(rawAmount);
 
-    const amount = amountMatch[1];
+    // Must have at least some digits after cleaning
+    if (!/\d/.test(amount)) continue;
 
-    // Clean name
     let name = beforeRp.replace(/^[^\w\s]+/, "").trim();
 
-    // If name is too short, borrow from previous line
+    // Borrow name from previous line if current name too short
     if (name.length < 3 && prevName) {
       name = prevName;
     }
 
-    // Skip if name still unusable
     if (name.length < 3) continue;
     if (/^\d{1,2}\s/.test(name)) continue;
     if (/^(Q\s|&|@@|===|©|®|™|Pocket|Search)/i.test(name)) continue;
 
     items.push({ id: uid(), tenant: name, amount });
-    prevName = null; // consumed
+    prevName = null;
   }
 
   return items;
