@@ -10,6 +10,8 @@ export default function ReviewPage() {
   const router = useRouter();
   const [items, setItems] = useState<PaymentItem[]>([]);
   const [imageName, setImageName] = useState("");
+  const [rawText, setRawText] = useState("");
+  const [showRaw, setShowRaw] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -17,6 +19,7 @@ export default function ReviewPage() {
     if (state) {
       setItems(state.items);
       setImageName(state.imageName);
+      if (state.rawText) setRawText(state.rawText);
     }
     setLoaded(true);
   }, []);
@@ -112,6 +115,23 @@ export default function ReviewPage() {
         <p className="text-gray-500 text-sm mb-4 shrink-0">
           Edit or delete items as needed.
         </p>
+
+        {/* Raw OCR debug */}
+        {rawText && (
+          <div className="mb-4 shrink-0">
+            <button
+              onClick={() => setShowRaw(!showRaw)}
+              className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              {showRaw ? "▲ Hide" : "▼ Show"} raw OCR text
+            </button>
+            {showRaw && (
+              <pre className="mt-2 p-3 bg-gray-100 rounded-lg text-xs text-gray-600 max-h-48 overflow-y-auto whitespace-pre-wrap font-mono border border-gray-200">
+                {rawText}
+              </pre>
+            )}
+          </div>
+        )}
 
         {/* Items — scrollable */}
         <div className="space-y-3 mb-4 overflow-y-auto min-h-0">

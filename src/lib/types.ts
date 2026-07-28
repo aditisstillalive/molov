@@ -7,4 +7,5 @@ export interface PaymentItem {
 export interface AppState {
   items: PaymentItem[];
   imageName: string;
+  rawText?: string;
 }

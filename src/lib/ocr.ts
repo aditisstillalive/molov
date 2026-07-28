@@ -8,14 +8,18 @@ function uid(): string {
   }
 }
 
+const MONTHS = /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/i;
+
+function isDateLine(line: string): boolean {
+  return MONTHS.test(line) && /\d{4}/.test(line);
+}
+
 /**
- * Parse OCR raw text from payment history screenshot.
+ * Parse OCR raw text into tenant + Rp amount pairs.
  *
- * GoPay/Bibit format:
- *   TENANT NAME -RpAMOUNT
- *   DD Mon YYYY Category  ← skipped
- *
- * Falls back to any line containing "Rp" + number.
+ * Two-pass approach:
+ * 1. Match lines where NAME and RpAMOUNT are on the SAME line
+ * 2. For lines with Rp but no name, borrow name from previous non-date line
  */
 export function parseOcrText(raw: string): PaymentItem[] {
   const lines = raw
@@ -24,39 +28,54 @@ export function parseOcrText(raw: string): PaymentItem[] {
     .filter((l) => l.length > 0);
 
   const items: PaymentItem[] = [];
-  const months =
-    /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/i;
+  let prevName: string | null = null;
 
   for (const line of lines) {
-    // Skip date lines and UI noise
-    if (months.test(line) && /\d{4}/.test(line)) continue;
+    // Skip date lines and noise
+    if (isDateLine(line)) continue;
     if (/^[^\w]*$/.test(line)) continue;
-    if (line.length < 5) continue;
+    if (line.length < 3) continue;
 
-    // Strategy: find any "Rp" + digits, split around it
+    // Find Rp + digits anywhere in the line
     const rpIdx = line.search(/[-+]?\s*Rp\.?\s*\d/i);
-    if (rpIdx === -1) continue;
 
+    if (rpIdx === -1) {
+      // No Rp on this line — could be a standalone name (all caps or title case)
+      // Save it as potential name for next Rp line
+      const cleaned = line.replace(/^[^\w\s]+/, "").trim();
+      if (
+        cleaned.length >= 3 &&
+        !/^(Q\s|&|@@|===|©|®|™|Pocket|Search)/i.test(cleaned)
+      ) {
+        prevName = cleaned;
+      }
+      continue;
+    }
+
+    // Line has Rp — extract name (before Rp) and amount (after Rp)
     const beforeRp = line.slice(0, rpIdx).trim();
-    const afterRp = line.slice(rpIdx).trim();
+    const afterRp = line.slice(rpIdx);
 
-    // Extract name and signed amount
     const amountMatch = afterRp.match(/[-+]?\s*Rp\.?\s*([\d.,]+)/i);
     if (!amountMatch) continue;
 
     const amount = amountMatch[1];
 
-    // Clean up name: remove leading noise chars like oo), (), J, ca, (0), etc.
+    // Clean name
     let name = beforeRp.replace(/^[^\w\s]+/, "").trim();
 
-    // Skip if name looks like a date fragment or is too short
-    if (/^\d{1,2}\s/.test(name)) continue;
-    if (name.length < 3) continue;
+    // If name is too short, borrow from previous line
+    if (name.length < 3 && prevName) {
+      name = prevName;
+    }
 
-    // Skip known UI noise names
+    // Skip if name still unusable
+    if (name.length < 3) continue;
+    if (/^\d{1,2}\s/.test(name)) continue;
     if (/^(Q\s|&|@@|===|©|®|™|Pocket|Search)/i.test(name)) continue;
 
     items.push({ id: uid(), tenant: name, amount });
+    prevName = null; // consumed
   }
 
   return items;
@@ -68,7 +87,6 @@ export function parseOcrText(raw: string): PaymentItem[] {
  */
 export function parseAmount(raw: string): number {
   let s = raw.replace(/[^\d.,-]/g, "").trim();
-
   if (!s) return 0;
 
   const lastComma = s.lastIndexOf(",");
@@ -77,22 +95,15 @@ export function parseAmount(raw: string): number {
   const commaParts = s.split(",").length;
 
   if (lastComma > lastDot) {
-    // European/Indonesian decimal: 1.000,00 or 1.286.056,50
-    // Commas separate decimals OR are thousands — check parts
-    s = s.replace(/\./g, ""); // remove thousand dots
+    s = s.replace(/\./g, "");
     if (commaParts === 2 && s.slice(-3).includes(",")) {
-      // Last comma is decimal separator: ,00
       s = s.replace(/,(\d{1,2})$/, ".$1");
     }
-    // Otherwise comma was thousands, already removed with dots above
   } else if (lastDot > lastComma) {
-    // Dots could be thousands (1.286.056, 100.000) or decimal (1286.50)
     const lastSegment = s.slice(lastDot + 1);
     if (dotParts > 2 || lastSegment.length === 3) {
-      // Multiple dots or 3-digit end = thousands separators → strip all dots
       s = s.replace(/\./g, "");
     }
-    // else: single dot, non-3-digit end = decimal (1286.50), keep as is
   }
 
   const n = parseFloat(s);

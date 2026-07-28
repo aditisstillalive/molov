@@ -2,8 +2,12 @@ import { AppState, PaymentItem } from "./types";
 
 const STORAGE_KEY = "molov_state";
 
-export function saveState(items: PaymentItem[], imageName: string): void {
-  const state: AppState = { items, imageName };
+export function saveState(
+  items: PaymentItem[],
+  imageName: string,
+  rawText?: string
+): void {
+  const state: AppState = { items, imageName, rawText };
   sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 

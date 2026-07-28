@@ -56,14 +56,14 @@ export default function UploadPage() {
       await worker.terminate();
 
       const items = parseOcrText(text);
-      saveState(items, image.name);
+      saveState(items, image.name, text);
       router.push("/review");
     } catch (err) {
       setError(
         "OCR processing failed. You can still proceed and add items manually."
       );
       console.error(err);
-      saveState([], image.name);
+      saveState([], image.name, "");
       setProcessing(false);
     }
   }
