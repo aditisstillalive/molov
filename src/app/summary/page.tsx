@@ -66,10 +66,10 @@ export default function SummaryPage() {
     return (
       <main className="flex-1 flex flex-col max-w-lg mx-auto w-full px-4 py-8">
         <Stepper current={2} />
-        <div className="text-center mt-16">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mt-8 text-center">
+          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg
-              className="w-8 h-8 text-green-500"
+              className="w-8 h-8 text-emerald-500"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -82,13 +82,15 @@ export default function SummaryPage() {
               />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold mb-2">Email Sent!</h1>
-          <p className="text-gray-500 mb-8">
+          <h1 className="text-xl font-bold text-gray-900 mb-2">
+            Email Sent!
+          </h1>
+          <p className="text-gray-500 text-sm mb-6">
             Summary has been sent to the configured recipients.
           </p>
           <a
             href="/"
-            className="inline-block py-3 px-8 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+            className="inline-block py-2.5 px-8 rounded-lg font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
           >
             Upload Another
           </a>
@@ -101,14 +103,16 @@ export default function SummaryPage() {
     return (
       <main className="flex-1 flex flex-col max-w-lg mx-auto w-full px-4 py-8">
         <Stepper current={2} />
-        <h1 className="text-2xl font-bold mt-8 mb-2">No Items</h1>
-        <p className="text-gray-500 mb-6">No items to summarize.</p>
-        <a
-          href="/"
-          className="inline-block w-full py-3 rounded-lg font-semibold text-center text-white bg-blue-600 hover:bg-blue-700 transition-colors"
-        >
-          ← Upload Image
-        </a>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-8">
+          <h1 className="text-xl font-bold text-gray-900 mb-2">No Items</h1>
+          <p className="text-gray-500 text-sm mb-4">No items to summarize.</p>
+          <a
+            href="/"
+            className="inline-block w-full py-2.5 rounded-lg font-semibold text-center text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
+          >
+            ← Upload Image
+          </a>
+        </div>
       </main>
     );
   }
@@ -117,68 +121,70 @@ export default function SummaryPage() {
     <main className="flex-1 flex flex-col max-w-lg mx-auto w-full px-4 py-8">
       <Stepper current={2} />
 
-      <h1 className="text-2xl font-bold mt-8 mb-2">Summary</h1>
-      <p className="text-gray-500 mb-6">
-        Review the final list and submit to email the summary.
-      </p>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-8">
+        <h1 className="text-xl font-bold text-gray-900 mb-1">Summary</h1>
+        <p className="text-gray-500 text-sm mb-4">
+          Review the final list and submit to email the summary.
+        </p>
 
-      {/* Items table */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="text-left px-4 py-2 font-medium text-gray-600">
-                Tenant
-              </th>
-              <th className="text-right px-4 py-2 font-medium text-gray-600 w-32">
-                Amount
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => (
-              <tr
-                key={item.id}
-                className="border-b border-gray-100 last:border-0"
-              >
-                <td className="px-4 py-2">{item.tenant}</td>
-                <td className="px-4 py-2 text-right font-mono">
-                  {parseAmount(item.amount).toLocaleString()}
+        {/* Items table */}
+        <div className="border border-gray-200 rounded-lg overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                <th className="text-left px-4 py-2.5 font-medium text-gray-600">
+                  Tenant
+                </th>
+                <th className="text-right px-4 py-2.5 font-medium text-gray-600 w-36">
+                  Amount
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr
+                  key={item.id}
+                  className="border-b border-gray-100 last:border-0"
+                >
+                  <td className="px-4 py-2.5 text-gray-900">{item.tenant}</td>
+                  <td className="px-4 py-2.5 text-right font-mono text-gray-900">
+                    {parseAmount(item.amount).toLocaleString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="bg-gray-50 border-t-2 border-gray-200 font-semibold">
+                <td className="px-4 py-2.5 text-gray-900">Total</td>
+                <td className="px-4 py-2.5 text-right font-mono text-gray-900">
+                  {total.toLocaleString()}
                 </td>
               </tr>
-            ))}
-          </tbody>
-          <tfoot className="bg-gray-50 border-t border-gray-200">
-            <tr>
-              <td className="px-4 py-2 font-semibold">Total</td>
-              <td className="px-4 py-2 text-right font-mono font-semibold">
-                {total.toLocaleString()}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
+            </tfoot>
+          </table>
+        </div>
       </div>
 
       {/* Error */}
       {error && (
-        <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm border border-red-200">
+        <div className="mt-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm border border-red-200">
           {error}
         </div>
       )}
 
       {/* Navigation */}
-      <div className="flex gap-3">
+      <div className="flex gap-3 mt-6">
         <button
           onClick={() => router.push("/review")}
           disabled={sending}
-          className="flex-1 py-3 rounded-lg font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50"
+          className="flex-1 py-3 rounded-lg font-semibold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
         >
           ← Back
         </button>
         <button
           onClick={handleSubmit}
           disabled={sending}
-          className="flex-1 py-3 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:bg-gray-300"
+          className="flex-1 py-3 rounded-lg font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:bg-gray-300 disabled:text-gray-500"
         >
           {sending ? "Sending..." : "Submit & Send Email"}
         </button>

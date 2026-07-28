@@ -27,7 +27,9 @@ export default function ReviewPage() {
     value: string
   ) {
     setItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
+      prev.map((item) =>
+        item.id === id ? { ...item, [field]: value } : item
+      )
     );
   }
 
@@ -47,7 +49,6 @@ export default function ReviewPage() {
     router.push("/summary");
   }
 
-  // Show loading until client-side state is read
   if (!loaded) {
     return (
       <main className="flex-1 flex flex-col max-w-lg mx-auto w-full px-4 py-8">
@@ -61,23 +62,27 @@ export default function ReviewPage() {
     return (
       <main className="flex-1 flex flex-col max-w-lg mx-auto w-full px-4 py-8">
         <Stepper current={1} />
-        <h1 className="text-2xl font-bold mt-8 mb-2">No Items Found</h1>
-        <p className="text-gray-500 mb-6">
-          No payment items were detected from the image. You can add items
-          manually below.
-        </p>
-        <button
-          onClick={handleAdd}
-          className="w-full py-3 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"
-        >
-          + Add Item
-        </button>
-        <button
-          onClick={() => router.push("/")}
-          className="w-full py-3 mt-3 rounded-lg font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
-        >
-          ← Upload Different Image
-        </button>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-8">
+          <h1 className="text-xl font-bold text-gray-900 mb-2">
+            No Items Found
+          </h1>
+          <p className="text-gray-500 text-sm mb-6">
+            No payment items were detected from the image. You can add items
+            manually below.
+          </p>
+          <button
+            onClick={handleAdd}
+            className="w-full py-2.5 rounded-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors mb-3"
+          >
+            + Add Item Manually
+          </button>
+          <button
+            onClick={() => router.push("/")}
+            className="w-full py-2.5 rounded-lg font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+          >
+            ← Upload Different Image
+          </button>
+        </div>
       </main>
     );
   }
@@ -86,79 +91,86 @@ export default function ReviewPage() {
     <main className="flex-1 flex flex-col max-w-lg mx-auto w-full px-4 py-8">
       <Stepper current={1} />
 
-      <h1 className="text-2xl font-bold mt-8 mb-1">Review Items</h1>
-      <p className="text-gray-500 mb-6">
-        {imageName && <span className="text-sm">From: {imageName}</span>}
-        {" — "}Edit or delete items as needed. Add missing items manually.
-      </p>
-
-      {/* Items */}
-      <div className="space-y-3 mb-6">
-        {items.map((item) => (
-          <div
-            key={item.id}
-            className="flex items-center gap-2 bg-white p-3 rounded-lg border border-gray-200 shadow-sm"
-          >
-            <input
-              type="text"
-              value={item.tenant}
-              onChange={(e) =>
-                handleChange(item.id, "tenant", e.target.value)
-              }
-              placeholder="Tenant name"
-              className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-            <input
-              type="text"
-              value={item.amount}
-              onChange={(e) =>
-                handleChange(item.id, "amount", e.target.value)
-              }
-              placeholder="Amount"
-              className="w-28 px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-            <button
-              onClick={() => handleDelete(item.id)}
-              className="p-2 text-red-400 hover:text-red-600 transition-colors"
-              title="Delete item"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
-            </button>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-8">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Review Items</h1>
+            {imageName && (
+              <p className="text-xs text-gray-400 mt-0.5">From: {imageName}</p>
+            )}
           </div>
-        ))}
+          <button
+            onClick={handleAdd}
+            className="px-3 py-1.5 rounded-lg text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-colors"
+          >
+            + Add
+          </button>
+        </div>
+
+        <p className="text-gray-500 text-sm mb-4">
+          Edit or delete items as needed.
+        </p>
+
+        {/* Items */}
+        <div className="space-y-3 mb-4">
+          {items.map((item) => (
+            <div
+              key={item.id}
+              className="flex items-center gap-2 bg-gray-50 p-3 rounded-lg border border-gray-200"
+            >
+              <input
+                type="text"
+                value={item.tenant}
+                onChange={(e) =>
+                  handleChange(item.id, "tenant", e.target.value)
+                }
+                placeholder="Tenant name"
+                className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-md text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
+              />
+              <input
+                type="text"
+                value={item.amount}
+                onChange={(e) =>
+                  handleChange(item.id, "amount", e.target.value)
+                }
+                placeholder="Amount"
+                className="w-28 px-3 py-2 bg-white border border-gray-300 rounded-md text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
+              />
+              <button
+                onClick={() => handleDelete(item.id)}
+                className="p-2 text-gray-400 hover:text-red-500 transition-colors shrink-0"
+                title="Delete item"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Add button */}
-      <button
-        onClick={handleAdd}
-        className="w-full py-2 rounded-lg font-medium text-blue-600 border border-blue-300 hover:bg-blue-50 transition-colors mb-6"
-      >
-        + Add Item
-      </button>
-
       {/* Navigation */}
-      <div className="flex gap-3">
+      <div className="flex gap-3 mt-6">
         <button
           onClick={() => router.push("/")}
-          className="flex-1 py-3 rounded-lg font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+          className="flex-1 py-3 rounded-lg font-semibold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
         >
           ← Back
         </button>
         <button
           onClick={handleNext}
-          className="flex-1 py-3 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+          className="flex-1 py-3 rounded-lg font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
         >
           Next →
         </button>
